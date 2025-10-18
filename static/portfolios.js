@@ -425,6 +425,7 @@ function updatePortfolioEAMonthlyTable(data) {
         
         months.forEach(month => {
             const profit = ea[month] || 0;
+            const trades = ea[`${month}_trades`] || 0;
             total += profit;
             const color = profit >= 0 ? 'text-emerald-400' : 'text-red-400';
             
@@ -434,7 +435,8 @@ function updatePortfolioEAMonthlyTable(data) {
                     <td class="text-right p-2 ${color} cursor-pointer hover:bg-gray-700 transition-colors" 
                         onclick="showPortfolioTradesDetail(${ea.magic_number}, '${month}')"
                         title="Click para ver trades">
-                        $${profit.toFixed(2)}
+                        $${profit.toFixed(2)}<br>
+                        <span class="text-xs text-gray-400">(${trades})</span>
                     </td>
                 `;
             } else {

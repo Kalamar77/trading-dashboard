@@ -1028,16 +1028,16 @@
                         <div>
                             <label class="block text-xs font-semibold text-gray-400 mb-2">Capital Inicial</label>
                             <div class="grid grid-cols-4 gap-2">
-                                <button onclick="selectCapital(100000)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                <button onclick="selectCapital(100000, event)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
                                     100k
                                 </button>
-                                <button onclick="selectCapital(50000)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                <button onclick="selectCapital(50000, event)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
                                     50k
                                 </button>
-                                <button onclick="selectCapital(25000)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                <button onclick="selectCapital(25000, event)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
                                     25k
                                 </button>
-                                <button onclick="selectCapital(10000)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                <button onclick="selectCapital(10000, event)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
                                     10k
                                 </button>
                             </div>
@@ -1048,13 +1048,13 @@
                         <div>
                             <label class="block text-xs font-semibold text-gray-400 mb-2">Riesgo por Operación ($)</label>
                             <div class="grid grid-cols-4 gap-2">
-                                <button onclick="selectRisk(3000)" class="risk-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                <button onclick="selectRisk(3000, event)" class="risk-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
                                     $3000
                                 </button>
-                                <button onclick="selectRisk(2500)" class="risk-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                <button onclick="selectRisk(2500, event)" class="risk-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
                                     $2500
                                 </button>
-                                <button onclick="selectRisk(2000)" class="risk-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                <button onclick="selectRisk(2000, event)" class="risk-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
                                     $2000
                                 </button>
                                 <input type="number" id="customRisk" placeholder="Otro" 

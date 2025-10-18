@@ -58,27 +58,35 @@ function initPropfirms() {
 // ============================================================================
 // SELECCIÓN DE CAPITAL Y RIESGO
 // ============================================================================
-function selectCapital(amount) {
+function selectCapital(amount, event) {
     propfirmConfig.capital = amount;
     document.getElementById('selectedCapital').value = amount;
     
-    // Actualizar UI
+    // Actualizar UI - Desactivar todos
     document.querySelectorAll('.capital-btn').forEach(btn => {
         btn.classList.remove('active', 'bg-cyan-600');
+        btn.classList.add('bg-gray-800');
     });
+    
+    // Activar el clicado
+    event.target.classList.remove('bg-gray-800');
     event.target.classList.add('active', 'bg-cyan-600');
     
     console.log(`💰 Capital seleccionado: $${amount}`);
 }
 
-function selectRisk(amount) {
+function selectRisk(amount, event) {
     propfirmConfig.risk = amount;
     document.getElementById('selectedRisk').value = amount;
     
-    // Actualizar UI
+    // Actualizar UI - Desactivar todos
     document.querySelectorAll('.risk-btn').forEach(btn => {
         btn.classList.remove('active', 'bg-cyan-600');
+        btn.classList.add('bg-gray-800');
     });
+    
+    // Activar el clicado
+    event.target.classList.remove('bg-gray-800');
     event.target.classList.add('active', 'bg-cyan-600');
     
     // Limpiar input personalizado
@@ -101,6 +109,7 @@ function selectCustomRisk() {
     // Desactivar botones predefinidos
     document.querySelectorAll('.risk-btn').forEach(btn => {
         btn.classList.remove('active', 'bg-cyan-600');
+        btn.classList.add('bg-gray-800');
     });
     
     console.log(`⚠️ Riesgo personalizado: $${customValue}`);

@@ -237,6 +237,7 @@ function updateStats(stats) {
     
     document.getElementById('netProfit').textContent = `$${safe(stats.net_profit, 2)}`;
     document.getElementById('totalTrades').textContent = stats.total_trades || 0;
+    document.getElementById('totalEAsCount').textContent = stats.total_eas || 0;
     document.getElementById('winRate').textContent = `${safe(stats.win_rate, 1)}%`;
     document.getElementById('profitFactor').textContent = safe(stats.profit_factor, 2);
     document.getElementById('expectancy').textContent = safe(stats.expectancy, 2);

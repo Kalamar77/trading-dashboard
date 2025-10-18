@@ -617,6 +617,10 @@ def get_stats():
         
         conn = sqlite3.connect('trading_data.db')
         
+        # Contar EAs únicos
+        count_query = 'SELECT COUNT(DISTINCT magic_number) as total_eas FROM trades WHERE magic_number IS NOT NULL AND magic_number != 0'
+        total_eas = pd.read_sql_query(count_query, conn).iloc[0]['total_eas']
+        
         query = 'SELECT close_time, profit FROM trades WHERE 1=1'
         params = []
         
@@ -651,7 +655,7 @@ def get_stats():
         
         if df.empty:
             return jsonify({
-                'net_profit': 0, 'total_trades': 0, 'win_rate': 0,
+                'net_profit': 0, 'total_trades': 0, 'total_eas': int(total_eas), 'win_rate': 0,
                 'profit_factor': 0, 'expectancy': 0, 'sharpe_ratio': 0,
                 'max_drawdown': 0, 'ret_dd': 0, 'sqn': 0, 'r2_equity': 0,
                 'cagr': 0, 'rr_ratio': 0, 'avg_recovery_days': 0,
@@ -808,6 +812,7 @@ def get_stats():
         return jsonify({
             'net_profit': round(net_profit, 2),
             'total_trades': total_trades,
+            'total_eas': int(total_eas),
             'win_rate': round(win_rate, 2),
             'profit_factor': round(profit_factor, 2),
             'expectancy': round(expectancy, 2),

@@ -2091,7 +2091,8 @@ def get_portfolio_ea_monthly():
                 
                 df['month'] = df['Close time'].dt.strftime('%b').str.upper()
                 
-                monthly = df.groupby('month')['Profit/Loss'].sum().to_dict()
+                monthly_profit = df.groupby('month')['Profit/Loss'].sum().to_dict()
+                monthly_trades = df.groupby('month').size().to_dict()
                 
                 ea_data = {
                     'magic_number': magic,
@@ -2104,13 +2105,16 @@ def get_portfolio_ea_monthly():
                 
                 for month in months:
                     profit = 0
+                    trades = 0
                     for eng_month, esp_month in month_map.items():
-                        if esp_month == month and eng_month in monthly:
-                            profit = monthly[eng_month]
+                        if esp_month == month and eng_month in monthly_profit:
+                            profit = monthly_profit[eng_month]
+                            trades = monthly_trades.get(eng_month, 0)
                             break
                     ea_data[month] = profit
+                    ea_data[f'{month}_trades'] = trades
                 
-                ea_data['total'] = sum(monthly.values())
+                ea_data['total'] = sum(monthly_profit.values())
                 
                 result.append(ea_data)
                 

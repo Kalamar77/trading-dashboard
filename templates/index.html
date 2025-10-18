@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REYGON - Trading Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #000;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+            border: 1px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, #3a3a3a 0%, #1a1a1a 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        .stat-card:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(234, 179, 8, 0.1);
+        }
+        .stat-card:hover::before {
+            background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+        }
+        
+        /* ✅ CLASES PARA COLOREAR KPIs CON !important */
+        .kpi-green {
+            background: linear-gradient(135deg, #065f46 0%, #064e3b 100%) !important;
+            border: 1px solid #10b981 !important;
+        }
+        .kpi-green:hover::before {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        }
+        
+        .kpi-yellow {
+            background: linear-gradient(135deg, #78350f 0%, #713f12 100%) !important;
+            border: 1px solid #f59e0b !important;
+        }
+        .kpi-yellow:hover::before {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+        }
+        
+        .kpi-red {
+            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%) !important;
+            border: 1px solid #ef4444 !important;
+        }
+        .kpi-red:hover::before {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+        
+        .sidebar-btn { transition: all 0.2s ease; }
+        .sidebar-btn:hover { transform: translateX(5px); }
+        .sidebar-btn.active {
+            background: linear-gradient(90deg, #eab308 0%, #ca8a04 100%);
+            color: #000;
+            font-weight: 600;
+        }
+        .content-wrapper {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .cursor-pointer {
+            cursor: pointer;
+        }
+        .cursor-pointer:hover {
+            transform: scale(1.05);
+        }
+        .ea-row-selected {
+            background: linear-gradient(90deg, rgba(234, 179, 8, 0.2) 0%, rgba(202, 138, 4, 0.1) 100%) !important;
+            border-left: 3px solid #eab308;
+        }
+        .ea-row-selected:hover {
+            background: linear-gradient(90deg, rgba(234, 179, 8, 0.3) 0%, rgba(202, 138, 4, 0.2) 100%) !important;
+        }
+        
+        /* Estilos para tabla ordenable */
+        [data-sort] {
+            user-select: none;
+            position: relative;
+        }
+        [data-sort]:hover {
+            background: rgba(234, 179, 8, 0.1);
+        }
+        .sort-indicator {
+            display: inline-block;
+            animation: fadeIn 0.2s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Estilos para campos de entrada en Características EA */
+#eaCommentInput:disabled,
+#eaFutureDateInput:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background-color: #0a0a0a !important;
+}
+
+#eaCommentInput:not(:disabled),
+#eaFutureDateInput:not(:disabled) {
+    opacity: 1;
+    cursor: text;
+    background-color: #1f2937 !important;
+}
+
+#eaCommentInput:not(:disabled):focus,
+#eaFutureDateInput:not(:disabled):focus {
+    border-color: #06b6d4 !important;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+#saveEAInfoButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#saveEAInfoButton:not(:disabled) {
+    opacity: 1;
+    cursor: pointer;
+}
+    </style>
+    
+</head>
+<body class="bg-black text-white">
+    <div class="bg-gradient-to-r from-gray-900 to-black border-b border-gray-800 p-2 shadow-lg">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-48 h-14 flex items-center px-4">
+                    <img src="/static/logo.png" alt="REYGON Logo" class="w-full h-auto object-contain">
+                </div>
+            </div>
+            <div class="flex gap-2 mr-4">
+                <button onclick="resetAllTrades()" class="bg-red-600 hover:bg-red-700 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2">
+                    <i class="fas fa-trash-alt text-xs"></i>
+                    Reset Trades
+                </button>
+                <button onclick="updateData(event)" class="bg-emerald-600 hover:bg-emerald-700 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2">
+                    <i class="fas fa-sync-alt text-xs"></i>
+                    Actualizar Datos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex">
+        <div class="w-64 bg-gray-900 min-h-screen border-r border-gray-800 p-3">
+            <nav class="space-y-2">
+                <button onclick="showTab('dashboard')" class="sidebar-btn active w-full flex items-center gap-2 p-3 rounded-lg text-left text-xs">
+                    <i class="fas fa-home w-4 text-sm"></i>
+                    <span>DASHBOARD PRINCIPAL</span>
+                </button>
+                <button onclick="showTab('caracteristicas')" class="sidebar-btn w-full flex items-center gap-2 p-3 rounded-lg text-left text-gray-400 hover:bg-gray-800 text-xs">
+                    <i class="fas fa-cogs w-4 text-sm"></i>
+                    <span>CARACTERÍSTICAS TÉCNICAS EA</span>
+                </button>
+                <button onclick="showTab('cuenta-real')" class="sidebar-btn w-full flex items-center gap-2 p-3 rounded-lg text-left text-gray-400 hover:bg-gray-800 text-xs">
+                    <i class="fas fa-wallet w-4 text-sm"></i>
+                    <span>CUENTA REAL</span>
+                </button>
+                <button onclick="showTab('portfolio')" class="sidebar-btn w-full flex items-center gap-2 p-3 rounded-lg text-left text-gray-400 hover:bg-gray-800 text-xs">
+                    <i class="fas fa-briefcase w-4 text-sm"></i>
+                    <span>CREACIÓN PORTFOLIOS</span>
+                </button>
+                <button onclick="showTab('propfirms')" class="sidebar-btn w-full flex items-center gap-2 p-3 rounded-lg text-left text-gray-400 hover:bg-gray-800 text-xs">
+                    <i class="fas fa-trophy w-4 text-sm"></i>
+                    <span>ANÁLISIS PROPFIRMS</span>
+                </button>
+            </nav>
+            <div class="mt-6 p-3 bg-gray-800 rounded-lg">
+                <p class="text-xs text-gray-400 mb-1">ÚLTIMA ACTUALIZACIÓN</p>
+                <p id="lastUpdate" class="text-xs text-emerald-400 font-semibold">Cargando...</p>
+            </div>
+        </div>
+
+        <div class="flex-1 p-4 overflow-auto">
+            <div class="content-wrapper">
+            <!-- ============================================================ -->
+            <!-- DASHBOARD TAB -->
+            <!-- ============================================================ -->
+            <div id="dashboard-tab" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div class="stat-card rounded-lg p-4">
+                        <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Net Profit</p>
+                        <p id="netProfit" class="text-3xl font-bold text-emerald-400">$0.00</p>
+                    </div>
+                    <div id="retddCard" class="stat-card rounded-lg p-4">
+                        <p class="text-xs text-white uppercase tracking-wider mb-1 font-semibold">RET/DD</p>
+                        <p id="retdd" class="text-3xl font-bold text-white">-</p>
+                    </div>
+                    <div id="sqnCard" class="stat-card rounded-lg p-4">
+                        <p class="text-xs text-white uppercase tracking-wider mb-1 font-semibold">SQN</p>
+                        <p id="sqn" class="text-3xl font-bold text-white">-</p>
+                    </div>
+                    <div id="r2Card" class="stat-card rounded-lg p-4">
+                        <p class="text-xs text-white uppercase tracking-wider mb-1 font-semibold">R² Equity</p>
+                        <p id="r2" class="text-3xl font-bold text-white">-</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
+                    <div id="cagrCard" class="stat-card rounded-lg p-3">
+                        <p class="text-xs text-white uppercase mb-1 font-semibold">CAGR</p>
+                        <p id="cagr" class="text-xl font-bold text-white">-</p>
+                    </div>
+                    <div id="profitFactorCard" class="stat-card rounded-lg p-3">
+                        <p class="text-xs text-white uppercase mb-1 font-semibold">Profit Factor</p>
+                        <p id="profitFactor" class="text-xl font-bold text-white">0.00</p>
+                    </div>
+                    <div id="expectancyCard" class="stat-card rounded-lg p-3">
+                        <p class="text-xs text-white uppercase mb-1 font-semibold">Expectancy</p>
+                        <p id="expectancy" class="text-xl font-bold text-white">0.00</p>
+                    </div>
+                    <div id="sharpeCard" class="stat-card rounded-lg p-3">
+                        <p class="text-xs text-white uppercase mb-1 font-semibold">Sharpe Ratio</p>
+                        <p id="sharpe" class="text-xl font-bold text-white">0.00</p>
+                    </div>
+                    
+                    <div id="rrCard" class="stat-card rounded-lg p-3">
+                        <p class="text-xs text-white uppercase mb-1 font-semibold">RR Ratio</p>
+                        <p id="rrRatio" class="text-xl font-bold text-white">0.00</p>
+                    </div>
+                    
+                    <div class="stat-card rounded-lg p-3">
+                        <p class="text-xs text-gray-500 uppercase mb-1"># Trades</p>
+                        <p id="totalTrades" class="text-xl font-bold">0</p>
+                    </div>
+                    <div class="stat-card rounded-lg p-3">
+                        <p class="text-xs text-gray-500 uppercase mb-1">Win Rate</p>
+                        <p id="winRate" class="text-xl font-bold">0%</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="stat-card rounded-lg p-3">
+                        <p class="text-xs text-gray-500 uppercase mb-1">Max DD Total</p>
+                        <p id="maxDD" class="text-lg font-bold text-red-400">$0.00</p>
+                    </div>
+                    
+                    <div id="maxDDYearCard" class="stat-card rounded-lg p-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <p class="text-xs text-white uppercase font-semibold">Max DD Año</p>
+                            <select id="yearSelectorMaxDD" onchange="updateMaxDDYear()" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                                <option value="all">Todos</option>
+                                <option value="2025" selected>2025</option>
+                                <option value="2024">2024</option>
+                                <option value="2023">2023</option>
+                                <option value="2022">2022</option>
+                            </select>
+                        </div>
+                        <p id="maxDDYear" class="text-lg font-bold text-white">-</p>
+                    </div>
+                    
+                    <div id="avgRecoveryCardMain" class="stat-card rounded-lg p-3">
+                        <p class="text-xs text-white uppercase mb-1 font-semibold">AVG Recovery (días)</p>
+                        <p id="avgRecoveryMain" class="text-lg font-bold text-white">-</p>
+                    </div>
+                    
+                    <div id="consistencyCardMain" class="stat-card rounded-lg p-3">
+                        <p class="text-xs text-white uppercase mb-1 font-semibold">Consistencia % Meses</p>
+                        <p id="consistencyMain" class="text-lg font-bold text-white">-</p>
+                    </div>
+                </div>
+
+                <div class="stat-card rounded-lg p-4">
+                    <h3 class="text-emerald-400 font-semibold mb-3 flex items-center gap-2 text-sm">
+                        <i class="fas fa-chart-bar"></i>
+                        Rentabilidad
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+                        <select id="filterMagicNumberMain" onchange="applyFilters()" class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                            <option value="all">Magic: Todos</option>
+                        </select>
+                        <select id="filterSymbol" onchange="applyFilters()" class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                            <option value="all">Divisa: Todas</option>
+                        </select>
+                        <select id="filterTimeframe" onchange="applyFilters()" class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                            <option value="all">Temp: Todas</option>
+                        </select>
+                        <select id="filterType" onchange="applyFilters()" class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                            <option value="all">Tipo: Todos</option>
+                            <option value="Buy">Buy</option>
+                            <option value="Sell">Sell</option>
+                            <option value="Buy/Sell">Buy/Sell</option>
+                        </select>
+                        <select id="filterSource" onchange="applyFilters()" class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                            <option value="all">Cuenta: Todas</option>
+                        </select>
+                        <select id="filterYear" onchange="applyFilters()" class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none">
+                            <option value="all">Año: Todos</option>
+                            <option value="2025" selected>2025</option>
+                            <option value="2024">2024</option>
+                        </select>
+                    </div>
+                    <div style="position: relative; height: 350px; width: 100%;">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="stat-card rounded-lg p-4">
+                    <h3 class="text-blue-400 font-semibold mb-3 flex items-center gap-2 text-sm">
+                        <i class="fas fa-chart-area"></i>
+                        Equity y Drawdown Diario
+                    </h3>
+                    <div style="position: relative; height: 250px; width: 100%;">
+                        <canvas id="drawdownChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="stat-card rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-white font-semibold flex items-center gap-2 text-sm">
+                                <i class="fas fa-robot"></i>
+                                Análisis Mensual por EA
+                            </h3>
+                            <span class="text-xs text-gray-400">(Click en fila para filtrar | Click en columnas para ordenar)</span>
+                        </div>
+                        <button onclick="showVerifyEAsModal()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2">
+                            <i class="fas fa-check-circle"></i>
+                            Verificar EAs
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="border-b border-gray-700">
+                                    <th class="text-left p-2 text-gray-400 uppercase sticky left-0 bg-gray-900 cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="magic_number" onclick="sortEATable('magic_number')">
+                                        MAGIC #
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="ENE" onclick="sortEATable('ENE')">
+                                        ENE
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="FEB" onclick="sortEATable('FEB')">
+                                        FEB
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="MAR" onclick="sortEATable('MAR')">
+                                        MAR
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="ABR" onclick="sortEATable('ABR')">
+                                        ABR
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="MAY" onclick="sortEATable('MAY')">
+                                        MAY
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="JUN" onclick="sortEATable('JUN')">
+                                        JUN
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="JUL" onclick="sortEATable('JUL')">
+                                        JUL
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="AGO" onclick="sortEATable('AGO')">
+                                        AGO
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="SEP" onclick="sortEATable('SEP')">
+                                        SEP
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="OCT" onclick="sortEATable('OCT')">
+                                        OCT
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="NOV" onclick="sortEATable('NOV')">
+                                        NOV
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="DIC" onclick="sortEATable('DIC')">
+                                        DIC
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="total" onclick="sortEATable('total')">
+                                        TOTAL
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="trades" onclick="sortEATable('trades')">
+                                        TRADES
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="winning" onclick="sortEATable('winning')">
+                                        WINNING
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="ret_dd" onclick="sortEATable('ret_dd')">
+                                        RET/DD
+                                    </th>
+                                    <th class="text-right p-2 text-gray-400 uppercase cursor-pointer hover:text-yellow-400 transition-colors" 
+                                        data-sort="max_consecutive_loss" onclick="sortEATable('max_consecutive_loss')">
+                                        MAX CONSEC LOSS
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="eaMonthlyTableBody">
+                                <tr>
+                                    <td colspan="18" class="text-center p-8 text-gray-500">
+                                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                        <p>Cargando datos...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- CARACTERÍSTICAS EA TAB -->
+            <!-- ============================================================ -->
+                <div id="caracteristicas-tab" class="hidden">
+                    <div class="content-wrapper space-y-4">
+                        <!-- SECCIÓN UNIFICADA: GESTIÓN DE EAs -->
+                        <div class="stat-card rounded-lg p-6">
+                            <h3 class="text-xl font-bold text-cyan-400 mb-4">
+                                <i class="fas fa-robot"></i> Gestión de Expert Advisors
+                            </h3>
+                            
+                            <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                                <!-- Subir CSVs -->
+                                <div>
+                                    <label class="text-xs text-gray-400 uppercase mb-2 block">Subir Backtesting</label>
+                                    <input type="file" 
+                                        id="eaFileInput" 
+                                        accept=".csv" 
+                                        multiple 
+                                        class="hidden" 
+                                        onchange="handleFileUpload(event)">
+                                    <button id="uploadEAButton" 
+                                            onclick="triggerFileUpload()" 
+                                            class="w-full bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 rounded font-semibold transition-all flex items-center justify-center gap-2">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        Subir CSVs
+                                    </button>
+                                </div>
+                                
+                                <!-- Selector de EA -->
+                                <div>
+                                    <label class="text-xs text-gray-400 uppercase mb-2 block">Seleccionar EA</label>
+                                    <select id="eaStatsSelector" 
+                                            onchange="onEAStatsChange()" 
+                                            class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2.5 text-white focus:border-cyan-500 focus:outline-none">
+                                        <option value="">Selecciona un EA...</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Comentario -->
+                                <div>
+                                    <label class="text-xs text-gray-400 uppercase mb-2 block">Comentario</label>
+                                    <input type="text" 
+                                        id="eaCommentInput" 
+                                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2.5 text-white text-sm focus:border-cyan-500 focus:outline-none"
+                                        placeholder="Ej: Estrategia Kaufman..."
+                                        disabled>
+                                </div>
+
+                                <!-- Fecha + Guardar -->
+                                <div>
+                                    <label class="text-xs text-gray-400 uppercase mb-2 block">Fecha Futura</label>
+                                    <div class="flex gap-2">
+                                        <input type="date" 
+                                            id="eaFutureDateInput" 
+                                            class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2.5 text-white focus:border-cyan-500 focus:outline-none"
+                                            disabled>
+                                        <button id="saveEAInfoButton" 
+                                                onclick="saveEAInfo()" 
+                                                class="bg-purple-600 hover:bg-purple-700 px-4 py-2.5 rounded font-semibold transition-all"
+                                                title="Guardar"
+                                                disabled>
+                                            <i class="fas fa-save"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                             
+
+                        <!-- CONTENEDOR DE STATS DEL EA SELECCIONADO -->
+                        <div id="eaStatsContainer" class="hidden">
+                            <!-- Aquí se renderizarán los KPIs -->
+                        </div>
+
+                        <!-- GRÁFICO DE DRAWDOWN DEL EA SELECCIONADO -->
+                        <div id="eaDrawdownContainer" class="hidden stat-card rounded-lg p-4">
+                            <h3 class="text-blue-400 font-semibold mb-3 flex items-center gap-2 text-sm">
+                                <i class="fas fa-chart-area"></i>
+                                Equity y Drawdown Diario - EA Seleccionado
+                            </h3>
+                            <div style="position: relative; height: 300px; width: 100%;">
+                                <canvas id="eaDrawdownChart"></canvas>
+                            </div>
+                        </div>
+                        <!-- ANÁLISIS MENSUAL DEL EA SELECCIONADO -->
+                        <div id="eaMonthlyAnalysisContainer" class="hidden stat-card rounded-lg p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-xl font-bold text-white">
+                                    <i class="fas fa-calendar-alt"></i> Análisis Mensual por Año
+                                </h3>
+                            </div>
+                            
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs">
+                                    <thead>
+                                        <tr class="border-b border-gray-700">
+                                            <th class="text-left p-2 text-gray-400 uppercase sticky left-0 bg-gray-900">AÑO</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">ENE</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">FEB</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">MAR</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">ABR</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">MAY</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">JUN</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">JUL</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">AGO</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">SEP</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">OCT</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">NOV</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase">DIC</th>
+                                            
+                                        </tr>
+                                    </thead>
+                                    <tbody id="eaMonthlyTableBodyCharacteristics">
+                                        <tr>
+                                            <td colspan="18" class="text-center p-8 text-gray-500">
+                                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                                <p>Selecciona un EA...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                            
+                            
+                        
+                        <!-- TABLA DE EAs CARGADOS -->
+                        <div class="stat-card rounded-lg p-6">
+                            <h3 class="text-xl font-bold text-white mb-4">
+                                <i class="fas fa-list"></i> EAs Cargados
+                            </h3>
+                            
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b border-gray-700">
+                                            <th class="text-left p-2 text-gray-400 uppercase">Activo</th>
+                                            <th class="text-left p-2 text-gray-400 uppercase">Dirección</th>
+                                            <th class="text-center p-2 text-gray-400 uppercase">Temporalidad</th>
+                                            <th class="text-left p-2 text-gray-400 uppercase">Características</th>
+                                            <th class="text-center p-2 text-gray-400 uppercase">Walk Forward</th>
+                                            <th class="text-center p-2 text-gray-400 uppercase">Fecha Future</th>
+                                            <th class="text-center p-2 text-gray-400 uppercase">Magic #</th>
+                                            <th class="text-right p-2 text-gray-400 uppercase"># Backtests</th>
+                                            <th class="text-center p-2 text-gray-400 uppercase">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="easListTableBody">
+                                        <tr>
+                                            <td colspan="9" class="text-center p-8 text-gray-500">
+                                                <i class="fas fa-inbox text-4xl mb-2"></i>
+                                                <p>No hay EAs cargados</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            <!-- ============================================================================ -->
+            <!-- PESTAÑA: CUENTA REAL -->
+            <!-- ============================================================================ -->
+            <div id="cuenta-real-tab" class="tab-content hidden">
+                <div class="max-w-[1920px] mx-auto">
+                    
+                    <!-- HEADER CON UPLOAD Y FILTROS -->
+                    <div class="stat-card rounded-lg p-6 mb-6">
+                        <div class="flex flex-wrap items-center justify-between gap-4">
+                            
+                            <!-- TÍTULO -->
+                            <div>
+                                <h2 class="text-2xl font-bold text-white mb-1">
+                                    <i class="fas fa-chart-line"></i> Cuenta Real
+                                </h2>
+                                <p class="text-gray-400 text-sm">Análisis de cuentas reales de trading</p>
+                            </div>
+                            
+                            <!-- BOTÓN UPLOAD -->
+                            <div>
+                                <input type="file" id="cuentaRealFileInput" accept=".csv" style="display:none;" onchange="handleCuentaRealUpload(event)">
+                                <button id="uploadCuentaRealButton" onclick="triggerCuentaRealUpload()" 
+                                        class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-lg">
+                                    <i class="fas fa-upload"></i> Subir CSV
+                                </button>
+                            </div>
+                            
+                        </div>
+                        
+                        <!-- FILTROS -->
+                        <div class="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-700">
+                            
+                            <!-- FILTRO CUENTA -->
+                            <div class="flex-1 min-w-[200px]">
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Cuenta</label>
+                                <select id="filterCuentaRealAccount" onchange="applyCuentaRealFilters()" 
+                                        class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                    <option value="all">Sin cuentas cargadas</option>
+                                </select>
+                            </div>
+                            
+                            <!-- FILTRO AÑO -->
+                            <div class="flex-1 min-w-[200px]">
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Año</label>
+                                <select id="filterCuentaRealYear" onchange="applyCuentaRealFilters()" 
+                                        class="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                    <option value="all">Todos los años</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2023">2023</option>
+                                    <option value="2022">2022</option>
+                                    <option value="2021">2021</option>
+                                    <option value="2020">2020</option>
+                                </select>
+                            </div>
+                            
+                        </div>
+                    </div>
+                    
+                    <!-- KPIS PRINCIPALES -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+                        
+                        <div class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Net Profit</p>
+                            <p id="cuentaRealNetProfit" class="text-2xl font-bold text-emerald-400">$0.00</p>
+                        </div>
+                        
+                        <div class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Total Trades</p>
+                            <p id="cuentaRealTotalTrades" class="text-2xl font-bold text-white">0</p>
+                        </div>
+                        
+                        <div class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Win Rate</p>
+                            <p id="cuentaRealWinRate" class="text-2xl font-bold text-cyan-400">0%</p>
+                        </div>
+                        
+                        <div id="cuentaRealProfitFactorCard" class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Profit Factor</p>
+                            <p id="cuentaRealProfitFactor" class="text-2xl font-bold text-white">0.00</p>
+                        </div>
+                        
+                        <div id="cuentaRealExpectancyCard" class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Expectancy</p>
+                            <p id="cuentaRealExpectancy" class="text-2xl font-bold text-white">0.00</p>
+                        </div>
+                        
+                        <div id="cuentaRealSharpeCard" class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Sharpe Ratio</p>
+                            <p id="cuentaRealSharpe" class="text-2xl font-bold text-white">0.00</p>
+                        </div>
+                        
+                        <div class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Max DD</p>
+                            <p id="cuentaRealMaxDD" class="text-2xl font-bold text-red-400">0%</p>
+                        </div>
+                        
+                    </div>
+                    
+                    <!-- KPIS AVANZADOS -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
+                        
+                        <div id="cuentaRealRetDDCard" class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">RET/DD</p>
+                            <p id="cuentaRealRetDD" class="text-2xl font-bold text-white">0.00</p>
+                        </div>
+                        
+                        <div id="cuentaRealSQNCard" class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">SQN</p>
+                            <p id="cuentaRealSQN" class="text-2xl font-bold text-white">0.00</p>
+                        </div>
+                        
+                        <div id="cuentaRealR2Card" class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">R² Equity</p>
+                            <p id="cuentaRealR2" class="text-2xl font-bold text-white">0.0000</p>
+                        </div>
+                        
+                        <div id="cuentaRealCAGRCard" class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">CAGR</p>
+                            <p id="cuentaRealCAGR" class="text-2xl font-bold text-white">0%</p>
+                        </div>
+                        
+                        <div id="cuentaRealRRCard" class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">R/R Ratio</p>
+                            <p id="cuentaRealRR" class="text-2xl font-bold text-white">0.00</p>
+                        </div>
+                        
+                        <div id="cuentaRealAvgRecoveryCard" class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Avg Recovery</p>
+                            <p id="cuentaRealAvgRecovery" class="text-2xl font-bold text-white">0.0d</p>
+                        </div>
+                        
+                        <div id="cuentaRealConsistencyCard" class="stat-card rounded-lg p-4">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Consistencia</p>
+                            <p id="cuentaRealConsistency" class="text-2xl font-bold text-white">0%</p>
+                        </div>
+                        
+                    </div>
+                    
+                    <!-- GRÁFICO RENTABILIDAD MENSUAL -->
+                    <div class="stat-card rounded-lg p-6 mb-6">
+                        <h3 class="text-xl font-bold text-white mb-4">
+                            <i class="fas fa-chart-bar"></i> Rentabilidad Mensual
+                        </h3>
+                        <div style="height: 450px;">
+                            <canvas id="cuentaRealMonthlyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- GRÁFICO EQUITY & DRAWDOWN -->
+                    <div class="stat-card rounded-lg p-6 mb-6">
+                        <h3 class="text-xl font-bold text-white mb-4">
+                            <i class="fas fa-chart-line"></i> Equity & Drawdown Diario
+                        </h3>
+                        <div style="height: 300px;">
+                            <canvas id="cuentaRealDrawdownChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- TABLA DE ANÁLISIS MENSUAL POR EA -->
+                    <div class="stat-card rounded-lg p-6">
+                        <h3 class="text-xl font-bold text-white mb-4">
+                            <i class="fas fa-robot"></i> Análisis Mensual por EA
+                        </h3>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="border-b border-gray-700">
+                                        <th class="text-left p-2 text-gray-400 uppercase sticky left-0 bg-gray-900">MAGIC #</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">ENE</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">FEB</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">MAR</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">ABR</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">MAY</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">JUN</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">JUL</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">AGO</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">SEP</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">OCT</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">NOV</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">DIC</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">TOTAL</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">TRADES</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">WINNING</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">RET/DD</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">MAX CONSEC LOSS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cuentaRealEAMonthlyTableBody">
+                                    <tr>
+                                        <td colspan="18" class="text-center p-8 text-gray-500">
+                                            <i class="fas fa-inbox text-4xl mb-2"></i>
+                                            <p>Sube un CSV para ver el análisis</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                 <!-- GESTIÓN DE PORTFOLIO -->
+                    <div class="stat-card rounded-lg p-6">
+                        <div class="mb-4">
+                            <h3 class="text-xl font-bold text-white">
+                                <i class="fas fa-briefcase"></i> Gestión de Portfolio
+                            </h3>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-gray-700">
+                                        <th class="text-left p-2 text-gray-400 uppercase">Nombre EA</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase">Magic #</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">Riesgo ($)</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase">Fecha Revisión</th>
+                                        <th class="text-left p-2 text-gray-400 uppercase">Comentario</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase">Guardar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cuentaRealPortfolioTableBody">
+                                    <tr>
+                                        <td colspan="6" class="text-center p-8 text-gray-500">
+                                            <i class="fas fa-inbox text-4xl mb-2"></i>
+                                            <p>Cargando portfolio...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        
+                    </div>
+                    
+                </div>
+            </div>
+            <!-- FIN PESTAÑA CUENTA REAL -->   
+
+            <!-- ============================================================ -->
+            <!-- PORTFOLIOS TAB -->
+            <!-- ============================================================ -->
+            <div id="portfolio-tab" class="hidden">
+                <div class="content-wrapper space-y-4">
+                    
+                    
+                    <!-- KPIs PRINCIPALES -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="stat-card rounded-lg p-6">
+                            <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Net Profit</p>
+                            <p id="portfolioNetProfit" class="text-4xl font-bold text-emerald-400">$0.00</p>
+                        </div>
+                        <div id="portfolioRetddCard" class="stat-card rounded-lg p-6">
+                            <p class="text-xs text-white uppercase tracking-wider mb-2 font-semibold">RET/DD</p>
+                            <p id="portfolioRetdd" class="text-4xl font-bold text-white">0.00</p>
+                        </div>
+                        <div id="portfolioSqnCard" class="stat-card rounded-lg p-6">
+                            <p class="text-xs text-white uppercase tracking-wider mb-2 font-semibold">SQN</p>
+                            <p id="portfolioSqn" class="text-4xl font-bold text-white">0.00</p>
+                        </div>
+                        <div id="portfolioR2Card" class="stat-card rounded-lg p-6">
+                            <p class="text-xs text-white uppercase tracking-wider mb-2 font-semibold">R² Equity</p>
+                            <p id="portfolioR2" class="text-4xl font-bold text-white">0.0000</p>
+                        </div>
+                    </div>
+
+                    <!-- KPIs SECUNDARIOS + MAX DD YEAR -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div id="portfolioCagrCard" class="stat-card rounded-lg p-4">
+                            <p class="text-xs text-white uppercase mb-2 font-semibold">CAGR</p>
+                            <p id="portfolioCagr" class="text-2xl font-bold text-white">0.00%</p>
+                        </div>
+                        <div id="portfolioProfitFactorCard" class="stat-card rounded-lg p-4">
+                            <p class="text-xs text-white uppercase mb-2 font-semibold">Profit Factor</p>
+                            <p id="portfolioProfitFactor" class="text-2xl font-bold text-white">0.00</p>
+                        </div>
+                        <div id="portfolioExpectancyCard" class="stat-card rounded-lg p-4">
+                            <p class="text-xs text-white uppercase mb-2 font-semibold">Expectancy</p>
+                            <p id="portfolioExpectancy" class="text-2xl font-bold text-white">0.00</p>
+                        </div>
+                        <div id="portfolioSharpeCard" class="stat-card rounded-lg p-4">
+                            <p class="text-xs text-white uppercase mb-2 font-semibold">Sharpe Ratio</p>
+                            <p id="portfolioSharpe" class="text-2xl font-bold text-white">0.00</p>
+                        </div>
+                        <div id="portfolioRrCard" class="stat-card rounded-lg p-4">
+                            <p class="text-xs text-white uppercase mb-2 font-semibold">RR Ratio</p>
+                            <p id="portfolioRr" class="text-2xl font-bold text-white">0.00</p>
+                        </div>
+                        <div class="stat-card rounded-lg p-4">
+                            <p class="text-xs text-gray-400 uppercase mb-2"># Trades</p>
+                            <p id="portfolioTotalTrades" class="text-2xl font-bold">0</p>
+                        </div>
+                        <div class="stat-card rounded-lg p-4">
+                            <p class="text-xs text-gray-400 uppercase mb-2">Win Rate</p>
+                            <p id="portfolioWinRate" class="text-2xl font-bold">0.0%</p>
+                        </div>
+                        
+                        <!-- MAX DD YEAR - MISMO TAMAÑO -->
+                        <div id="portfolioMaxDDYearCard" class="stat-card rounded-lg p-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <p class="text-xs text-gray-400 uppercase">Max DD Year</p>
+                                <select id="portfolioYearSelector" onchange="updatePortfolioMaxDDYear()" 
+                                        class="bg-gray-800 border border-gray-700 text-white rounded px-1 py-0.5 text-xs">
+                                    <option value="2025">2025</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2023">2023</option>
+                                    <option value="2022">2022</option>
+                                    <option value="2021">2021</option>
+                                    <option value="2020">2020</option>
+                                    <option value="all">Todos</option>
+                                </select>
+                            </div>
+                            <p id="portfolioMaxDDYear" class="text-2xl font-bold text-red-400">0.00%</p>
+                        </div>
+                    </div>
+                    
+                    <!-- GRÁFICO DE RENTABILIDAD -->
+                    <div class="stat-card rounded-lg p-6">
+                        <h3 class="text-xl font-bold text-white mb-4">
+                            <i class="fas fa-chart-line"></i> Rentabilidad Mensual
+                        </h3>
+                        <div style="position: relative; height: 400px; width: 100%;">
+                            <canvas id="portfolioMonthlyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- GRÁFICO DE DRAWDOWN -->
+                    <div class="stat-card rounded-lg p-6">
+                        <h3 class="text-xl font-bold text-white mb-4">
+                            <i class="fas fa-chart-area"></i> Equity y Drawdown Diario
+                        </h3>
+                        <div style="position: relative; height: 400px; width: 100%;">
+                            <canvas id="portfolioDrawdownChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- ANÁLISIS MENSUAL POR EA -->
+                    <div class="stat-card rounded-lg p-6">
+                        <h3 class="text-xl font-bold text-white mb-4">
+                            <i class="fas fa-table"></i> Análisis Mensual por EA
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="border-b border-gray-700">
+                                        <th class="text-left p-2 text-gray-400 uppercase sticky left-0 bg-gray-900">EA</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">ENE</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">FEB</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">MAR</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">ABR</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">MAY</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">JUN</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">JUL</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">AGO</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">SEP</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">OCT</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">NOV</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">DIC</th>
+                                        <th class="text-right p-2 text-gray-400 uppercase">TOTAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="portfolioMonthlyTableBody">
+                                    <tr>
+                                        <td colspan="14" class="text-center p-8 text-gray-500">
+                                            Añade EAs al portafolio para ver el análisis
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- TABLA DE EAs EN EL PORTAFOLIO - NUEVA POSICIÓN -->
+                    <div class="stat-card rounded-lg p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold text-cyan-400">
+                                <i class="fas fa-briefcase"></i> EAs en el Portafolio
+                            </h3>
+                            <button onclick="clearPortfolio()" 
+                                    class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold">
+                                <i class="fas fa-trash"></i> Limpiar Todo
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-gray-700">
+                                        <th class="text-left p-2 text-gray-400 uppercase">Activo</th>
+                                        <th class="text-left p-2 text-gray-400 uppercase">Dirección</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase">Temporalidad</th>
+                                        <th class="text-left p-2 text-gray-400 uppercase">Características</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase">Walk Forward</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase">Fecha Future</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase">Magic #</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="portfolioEAsTableBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center p-8 text-gray-500">
+                                            <i class="fas fa-inbox text-4xl mb-2"></i>
+                                            <p>No hay EAs en el portafolio</p>
+                                            <p class="text-sm mt-2">Ve a Características Técnicas y añade EAs usando el botón verde</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================================ -->
+            <!-- ============================================================================ -->
+            <!-- CONTENIDO: ANÁLISIS PROPFIRMS -->
+            <!-- ============================================================================ -->
+            <div id="propfirms-tab" class="tab-content hidden">
+                
+                <!-- CONFIGURACIÓN COMPACTA -->
+                <div class="stat-card rounded-lg p-4 mb-4">
+                    <h2 class="text-xl font-bold text-cyan-400 mb-4">
+                        <i class="fas fa-cog"></i> Configuración del Desafío
+                    </h2>
+                    
+                    <!-- CAPITAL Y RIESGO EN UNA LÍNEA -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <!-- CAPITAL -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 mb-2">Capital Inicial</label>
+                            <div class="grid grid-cols-4 gap-2">
+                                <button onclick="selectCapital(100000)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                    100k
+                                </button>
+                                <button onclick="selectCapital(50000)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                    50k
+                                </button>
+                                <button onclick="selectCapital(25000)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                    25k
+                                </button>
+                                <button onclick="selectCapital(10000)" class="capital-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                    10k
+                                </button>
+                            </div>
+                            <input type="hidden" id="selectedCapital" value="100000">
+                        </div>
+                        
+                        <!-- RIESGO -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 mb-2">Riesgo por Operación ($)</label>
+                            <div class="grid grid-cols-4 gap-2">
+                                <button onclick="selectRisk(3000)" class="risk-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                    $3000
+                                </button>
+                                <button onclick="selectRisk(2500)" class="risk-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                    $2500
+                                </button>
+                                <button onclick="selectRisk(2000)" class="risk-btn bg-gray-800 hover:bg-cyan-600 px-3 py-2 rounded font-semibold transition-colors text-sm">
+                                    $2000
+                                </button>
+                                <input type="number" id="customRisk" placeholder="Otro" 
+                                    onchange="selectCustomRisk()"
+                                    class="bg-gray-800 hover:bg-cyan-600 border border-gray-700 rounded px-2 py-2 text-center font-semibold transition-colors focus:bg-cyan-600 focus:outline-none text-white text-sm">
+                            </div>
+                            <input type="hidden" id="selectedRisk" value="2500">
+                        </div>
+                    </div>
+                    
+                    <!-- UMBRALES ALARGADOS -->
+                    <div class="grid grid-cols-4 gap-6 mb-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 mb-2">Umbral Fase 1</label>
+                            <div class="relative">
+                                <input type="number" id="threshold1" value="8" 
+                                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-3 text-white text-2xl font-bold text-center">
+                                <span class="absolute right-3 top-3 text-gray-400 text-2xl font-bold">%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 mb-2">Umbral Fase 2</label>
+                            <div class="relative">
+                                <input type="number" id="threshold2" value="5" 
+                                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-3 text-white text-2xl font-bold text-center">
+                                <span class="absolute right-3 top-3 text-gray-400 text-2xl font-bold">%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 mb-2">DD Diario</label>
+                            <div class="relative">
+                                <input type="number" id="ddDaily" value="5" 
+                                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-3 text-white text-2xl font-bold text-center">
+                                <span class="absolute right-3 top-3 text-red-400 text-2xl font-bold">%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 mb-2">DD Máximo</label>
+                            <div class="relative">
+                                <input type="number" id="ddMax" value="10" 
+                                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-3 text-white text-2xl font-bold text-center">
+                                <span class="absolute right-3 top-3 text-red-400 text-2xl font-bold">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- BOTÓN APLICAR PEQUEÑO -->
+                    <button onclick="applyThresholds()" 
+                            class="bg-cyan-600 hover:bg-cyan-700 px-3 py-1 rounded text-xs font-semibold transition-colors">
+                        <i class="fas fa-check text-xs"></i> Aplicar
+                    </button>
+                </div>
+                
+                
+
+                <!-- LISTA DE EAs -->
+                <div class="stat-card rounded-lg p-4 mb-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-bold text-cyan-400">
+                            <i class="fas fa-list"></i> EAs Seleccionadas
+                        </h3>
+                        <div class="flex gap-2">
+                            <button onclick="processStrategies()" 
+                                    class="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-xs font-semibold transition-colors">
+                                <i class="fas fa-play text-xs"></i> Procesar
+                            </button>
+                            <button onclick="clearPropfirmList()" 
+                                    class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-xs font-semibold transition-colors">
+                                <i class="fas fa-trash text-xs"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-700">
+                                    <th class="text-left p-2 text-gray-400 uppercase text-xs">Nombre</th>
+                                    <th class="text-center p-2 text-gray-400 uppercase text-xs">Magic #</th>
+                                    <th class="text-center p-2 text-gray-400 uppercase text-xs">RR/Medio</th>
+                                    <th class="text-center p-2 text-gray-400 uppercase text-xs">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="propfirmEAsTableBody">
+                                <tr>
+                                    <td colspan="4" class="text-center p-6 text-gray-500">
+                                        <i class="fas fa-inbox text-3xl mb-2"></i>
+                                        <p class="text-sm">No hay EAs seleccionados</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- RESULTADOS -->
+                <div id="propfirmResults" class="hidden">
+                    <!-- RESUMEN -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div class="stat-card rounded-lg p-4 text-center">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Estrategias</p>
+                            <p id="totalStrategies" class="text-3xl font-bold text-cyan-400">0</p>
+                        </div>
+                        <div class="stat-card rounded-lg p-4 text-center">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Completados</p>
+                            <p id="completedChallenges" class="text-3xl font-bold text-green-400">0</p>
+                        </div>
+                        <div class="stat-card rounded-lg p-4 text-center">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Tiempo Prom.</p>
+                            <p id="avgTime" class="text-3xl font-bold text-yellow-400">0</p>
+                        </div>
+                        <div class="stat-card rounded-lg p-4 text-center">
+                            <p class="text-gray-400 text-xs uppercase mb-2">Mejor</p>
+                            <p id="bestStrategy" class="text-base font-bold text-purple-400">-</p>
+                        </div>
+                    </div>
+                    
+                    <!-- TABLA DE RESULTADOS -->
+                    <div class="stat-card rounded-lg p-4">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-gray-700">
+                                        <th class="text-left p-2 text-gray-400 uppercase text-xs">Estrategia</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase text-xs">Complet.</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase text-xs">T.Prom</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase text-xs">Mejor T.</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase text-xs">% Éxito</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase text-xs">Meses</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase text-xs">S.DD Máx</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase text-xs">S.DD Dia</th>
+                                        <th class="text-center p-2 text-gray-400 uppercase text-xs">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="propfirmResultsTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+
+            <!-- HISTORIAL DE SIMULACIONES -->
+                <div class="stat-card rounded-lg p-3 mb-4">
+                    <h3 class="text-sm font-bold text-cyan-400 mb-2">
+                        <i class="fas fa-history"></i> Historial
+                    </h3>
+                    <div id="historyContainer">
+                        <p class="text-xs text-gray-500">No hay simulaciones guardadas</p>
+                    </div>
+                </div>
+                
+            <!-- ============================================================ -->
+            <!-- MODAL: DETALLE DE TRADES -->
+            <!-- ============================================================ -->
+            <div id="tradesDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+                <div class="bg-gray-900 rounded-lg p-6 max-w-6xl w-full mx-4 border border-gray-700 stat-card max-h-[90vh] overflow-hidden flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-emerald-400">
+                            <i class="fas fa-list"></i> <span id="tradesDetailTitle">Detalle de Trades</span>
+                        </h3>
+                        <button onclick="closeTradesDetailPopup()" class="text-gray-400 hover:text-white text-xl">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="overflow-auto flex-1">
+                        <table class="w-full text-xs">
+                            <thead class="sticky top-0 bg-gray-900">
+                                <tr class="border-b border-gray-700">
+                                    <th class="text-left p-2 text-gray-400 uppercase">Fecha Cierre</th>
+                                    <th class="text-left p-2 text-gray-400 uppercase">Símbolo</th>
+                                    <th class="text-left p-2 text-gray-400 uppercase">Tipo</th>
+                                    <th class="text-right p-2 text-gray-400 uppercase">Lotes</th>
+                                    <th class="text-right p-2 text-gray-400 uppercase">Precio Apertura</th>
+                                    <th class="text-right p-2 text-gray-400 uppercase">Precio Cierre</th>
+                                    <th class="text-right p-2 text-gray-400 uppercase">Profit</th>
+                                    <th class="text-left p-2 text-gray-400 uppercase">Comentario</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tradesDetailTableBody">
+                                <tr>
+                                    <td colspan="8" class="text-center p-8 text-gray-500">
+                                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                        <p>Cargando trades...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-700">
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <p class="text-xs text-gray-400">Total Trades</p>
+                                <p id="modalTotalTrades" class="text-lg font-bold text-white">0</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400">Profit Total</p>
+                                <p id="modalTotalProfit" class="text-lg font-bold text-emerald-400">$0</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400">Win Rate</p>
+                                <p id="modalWinRate" class="text-lg font-bold text-blue-400">0%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- MODAL: DETALLES DE ESTRATEGIA PROPFIRM -->
+        <div id="propfirmStrategyModal" class="fixed inset-0 bg-black bg-opacity-75 hidden flex items-center justify-center z-50" onclick="if(event.target === this) closePropfirmStrategyModal()">
+            <div class="bg-gray-900 rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="propfirmStrategyTitle" class="text-2xl font-bold text-cyan-400"></h2>
+                    <button onclick="closePropfirmStrategyModal()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                
+                <!-- INFO DE CONFIGURACIÓN -->
+                <div class="grid grid-cols-4 gap-4 mb-4">
+                    <div class="bg-gray-800 rounded p-3 text-center">
+                        <p class="text-xs text-gray-400 mb-1">Capital</p>
+                        <p id="modalCapital" class="text-lg font-bold text-cyan-400"></p>
+                    </div>
+                    <div class="bg-gray-800 rounded p-3 text-center">
+                        <p class="text-xs text-gray-400 mb-1">Riesgo/Op</p>
+                        <p id="modalRisk" class="text-lg font-bold text-yellow-400"></p>
+                    </div>
+                    <div class="bg-gray-800 rounded p-3 text-center">
+                        <p class="text-xs text-gray-400 mb-1">Factor Escalado</p>
+                        <p id="modalScaling" class="text-lg font-bold text-purple-400"></p>
+                    </div>
+                    <div class="bg-gray-800 rounded p-3 text-center">
+                        <p class="text-xs text-gray-400 mb-1">Total Trades</p>
+                        <p id="modalTotalTrades" class="text-lg font-bold text-white"></p>
+                    </div>
+                </div>
+                
+                <!-- TABLA DE TRADES -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left p-2 text-gray-400">#</th>
+                                <th class="text-left p-2 text-gray-400">Fecha Cierre</th>
+                                <th class="text-left p-2 text-gray-400">Símbolo</th>
+                                <th class="text-left p-2 text-gray-400">Tipo</th>
+                                <th class="text-right p-2 text-gray-400">P&L Original</th>
+                                <th class="text-right p-2 text-gray-400">P&L Escalado</th>
+                                <th class="text-right p-2 text-gray-400">Balance</th>
+                                <th class="text-center p-2 text-gray-400">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="propfirmStrategyTradesBody">
+                            <tr>
+                                <td colspan="8" class="text-center p-8 text-gray-500">
+                                    Cargando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    <!-- ============================================================ -->
+    <!-- MODAL: VERIFICACIÓN DE EAs -->
+    <!-- ============================================================ -->
+    <div id="verifyEAsModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-900 rounded-lg p-6 max-w-7xl w-full mx-4 border border-gray-700 stat-card max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-blue-400">
+                    <i class="fas fa-check-circle"></i> Verificación Completa de EAs
+                </h3>
+                <div class="flex gap-2">
+                    <button onclick="showAddMappingModal()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm font-semibold transition-all flex items-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        Añadir Mapeo
+                    </button>
+                    <button onclick="showActiveMappingsDetailed()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm font-semibold transition-all flex items-center gap-2">
+                        <i class="fas fa-list"></i>
+                        Ver Mapeos
+                    </button>
+                    <button onclick="showUnifyModal()" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded text-sm font-semibold transition-all flex items-center gap-2">
+                        <i class="fas fa-object-group"></i>
+                        Unificar Múltiples
+                    </button>
+                    <button onclick="closeVerifyEAsModal()" class="text-gray-400 hover:text-white text-xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mb-4 p-3 bg-gray-800 rounded">
+                <p class="text-sm"><strong>Total EAs:</strong> <span id="verifyTotalEAs" class="text-yellow-400">0</span></p>
+                <p class="text-sm"><strong>Total Trades:</strong> <span id="verifyTotalTrades" class="text-emerald-400">0</span></p>
+            </div>
+            <div class="overflow-auto flex-1">
+                <table class="w-full text-xs">
+                    <thead class="sticky top-0 bg-gray-900">
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left p-2 text-gray-400 uppercase">Magic #</th>
+                            <th class="text-right p-2 text-gray-400 uppercase">Trades</th>
+                            <th class="text-left p-2 text-gray-400 uppercase">Par</th>
+                            <th class="text-left p-2 text-gray-400 uppercase">TF</th>
+                            <th class="text-left p-2 text-gray-400 uppercase">Dirección</th>
+                            <th class="text-left p-2 text-gray-400 uppercase">Estrategia</th>
+                            <th class="text-right p-2 text-gray-400 uppercase">Profit</th>
+                            <th class="text-right p-2 text-gray-400 uppercase">Win%</th>
+                            <th class="text-left p-2 text-gray-400 uppercase">Símbolos</th>
+                            <th class="text-left p-2 text-gray-400 uppercase">Cuentas</th>
+                            <th class="text-left p-2 text-gray-400 uppercase">Primer Trade</th>
+                            <th class="text-left p-2 text-gray-400 uppercase">Último Trade</th>
+                            <th class="text-center p-2 text-gray-400 uppercase">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="verifyEAsTableBody">
+                        <tr>
+                            <td colspan="13" class="text-center p-8 text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Cargando verificación...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+        <!-- ============================================================ -->
+        <!-- MODAL: RESULTADOS BACKTESTING -->
+        <!-- ============================================================ -->
+        <div id="backtestResultsModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-gray-900 rounded-lg p-6 max-w-6xl w-full mx-4 border border-gray-700 stat-card max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-blue-400">
+                        <i class="fas fa-chart-line"></i> <span id="backtestResultsTitle">Resultados Backtesting</span>
+                    </h3>
+                    <button onclick="closeBacktestResultsModal()" class="text-gray-400 hover:text-white text-xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="overflow-auto flex-1">
+                    <table class="w-full text-xs">
+                        <thead class="sticky top-0 bg-gray-900">
+                            <tr class="border-b border-gray-700">
+                                <th class="text-center p-2 text-gray-400 uppercase">Test #</th>
+                                <th class="text-right p-2 text-gray-400 uppercase">Net Profit</th>
+                                <th class="text-right p-2 text-gray-400 uppercase">Trades</th>
+                                <th class="text-right p-2 text-gray-400 uppercase">Win Rate</th>
+                                <th class="text-right p-2 text-gray-400 uppercase">Profit Factor</th>
+                                <th class="text-right p-2 text-gray-400 uppercase">Max DD</th>
+                                <th class="text-right p-2 text-gray-400 uppercase">Sharpe</th>
+                            </tr>
+                        </thead>
+                        <tbody id="backtestResultsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- ============================================================ -->
+        <!-- MODAL: NOTAS -->
+        <!-- ============================================================ -->
+        <div id="notesModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-gray-900 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-700 stat-card">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-purple-400">
+                        <i class="fas fa-sticky-note"></i> Editar Notas
+                    </h3>
+                    <button onclick="closeNotesModal()" class="text-gray-400 hover:text-white text-xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <textarea id="notesTextarea" 
+                        rows="8" 
+                        class="w-full bg-gray-800 border border-gray-700 rounded p-3 text-white focus:border-purple-500 focus:outline-none"
+                        placeholder="Añade notas sobre este EA..."></textarea>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button onclick="closeNotesModal()" 
+                            class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">
+                        Cancelar
+                    </button>
+                    <button id="saveNotesButton" 
+                            class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded font-semibold">
+                        Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+<script src="/static/caracteristicas_ea.js"></script>
+    <!-- ============================================================ -->
+    <!-- MODAL: UNIFICACIÓN -->
+    <!-- ============================================================ -->
+    <div id="unifyModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-900 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-700 stat-card max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-yellow-400">
+                    <i class="fas fa-object-group"></i> Unificar Magic Numbers
+                </h3>
+                <button onclick="closeUnifyModal()" class="text-gray-400 hover:text-white text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4 p-4 bg-blue-900 bg-opacity-30 border border-blue-500 rounded">
+                <p class="text-sm text-blue-300">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Instrucciones:</strong> Añade pares de Magic Numbers. Todos los trades del "EA Origen" se moverán al "EA Destino".
+                </p>
+            </div>
+
+            <div class="overflow-auto flex-1 mb-4">
+                <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-gray-900">
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left p-2 text-gray-400">EA Origen (eliminar)</th>
+                            <th class="text-center p-2 text-gray-400">→</th>
+                            <th class="text-left p-2 text-gray-400">EA Destino (mantener)</th>
+                            <th class="text-center p-2 text-gray-400">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unifyMappingsBody">
+                        <!-- Aquí se añadirán las filas dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex gap-2 mb-4">
+                <button onclick="addUnifyRow()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm font-semibold flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    Añadir Fila
+                </button>
+                <button onclick="loadPresetMappings()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm font-semibold flex items-center gap-2">
+                    <i class="fas fa-magic"></i>
+                    Cargar Preset (tu tabla)
+                </button>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-4 border-t border-gray-700">
+                <button onclick="closeUnifyModal()" class="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded font-semibold">
+                    Cancelar
+                </button>
+                <button onclick="executeUnification()" class="bg-yellow-600 hover:bg-yellow-700 px-6 py-2 rounded font-semibold flex items-center gap-2">
+                    <i class="fas fa-check"></i>
+                    Ejecutar Unificación
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/dashboard.js"></script>
+    <script src="/static/cuenta_real.js"></script>
+    <script src="/static/portfolios.js"></script>
+    <script src="/static/propfirms.js"></script>
+</body>
+</html>

@@ -272,7 +272,7 @@ def get_cuenta_real_stats():
         ret_dd = (net_profit / max_drawdown_abs) if max_drawdown_abs > 0 else 0
 
         # Max DD Porcentual
-        capital_inicial = max(5000, max_drawdown_abs * 2)  # Mismo criterio que CAGR
+        capital_inicial = 100000  # Capital real de la cuenta
         max_dd_percent = (max_drawdown_abs / capital_inicial * 100) if capital_inicial > 0 else 0
         
         # SQN

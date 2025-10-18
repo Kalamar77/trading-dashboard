@@ -105,6 +105,7 @@ def extract_timeframe_from_comment(comment):
     
     comment_upper = str(comment).upper()
     
+    # ORDEN IMPORTANTE: Más largo primero para evitar que H1 detecte H12
     timeframe_patterns = [
         ('H12', '12H'), ('12H', '12H'),
         ('H1', '1H'), ('1H', '1H'),
@@ -121,8 +122,13 @@ def extract_timeframe_from_comment(comment):
         ('MN', 'MN'),
     ]
     
+    # Buscar con separadores para evitar falsos positivos (H1 dentro de H12)
     for pattern, standard in timeframe_patterns:
-        if pattern in comment_upper:
+        # Buscar el patrón rodeado de separadores (_) o al inicio/final
+        if f'_{pattern}_' in comment_upper or \
+           comment_upper.startswith(pattern + '_') or \
+           comment_upper.endswith('_' + pattern) or \
+           comment_upper == pattern:
             return standard
     
     return None
@@ -404,7 +410,7 @@ def calculate_statistics(source=None, year=None, trade_type=None, symbol=None, t
         days_diff = (last_date - first_date).days
         years = days_diff / 365.25
         
-        capital_required = max(5000, max_drawdown_abs * 5)
+        capital_required = 100000  # Capital real de la cuenta
         final_capital = capital_required + net_profit
         
         if years >= 1:
@@ -1788,7 +1794,7 @@ def get_portfolio_stats():
                 cagr = 0
         elif days_diff > 0:
             # Fallback sin Balance
-            capital_requerido = max(5000, max_drawdown_abs * 2)
+            capital_requerido = 100000  # Capital real de la cuenta
             equity_final = capital_requerido + net_profit
             
             if capital_requerido > 0 and equity_final > 0:
@@ -2019,7 +2025,7 @@ def get_portfolio_max_dd_year():
         max_dd_abs = abs(combined_df['drawdown'].min())
         
         # Calcular como porcentaje
-        capital_inicial = max(5000, max_dd_abs * 2)
+        capital_inicial = 100000  # Capital real de la cuenta
         max_dd_percent = (max_dd_abs / capital_inicial * 100) if capital_inicial > 0 else 0
         
         print(f"   ✅ Max DD: {max_dd_percent:.2f}%")

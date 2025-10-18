@@ -45,7 +45,7 @@ def parse_filename(filename):
         # Patrones de detección
         timeframe_pattern = re.compile(r'^(M1|M5|M15|M30|H1|H2|H4|H6|H8|H12|D1|W1|MN1?)$', re.IGNORECASE)
         fecha_pattern = re.compile(r'^\d{2}-\d{2}-\d{4}$')
-        walk_forward_pattern = re.compile(r'^\d+-\d+%?$')  # ← ACEPTA CON O SIN %
+        walk_forward_pattern = re.compile(r'^(\d+-\d+%?|ORIG%?)$', re.IGNORECASE)  # ✅ Acepta números Y ORIG
         direccion_values = ['B', 'S', 'BS', 'SB']
         
         # Inicializar
@@ -284,7 +284,7 @@ def upload_ea_csv():
                     max_drawdown_abs = abs(df_sorted['drawdown'].min())
 
                     # Calcular Max DD como PORCENTAJE
-                    capital_inicial = max(5000, max_drawdown_abs * 2)
+                    capital_inicial = 100000  # Capital real de la cuenta
                     max_drawdown = (max_drawdown_abs / capital_inicial * 100) if capital_inicial > 0 else 0
                     
                     # Calcular Sharpe (simplificado)
@@ -1038,7 +1038,7 @@ def get_detailed_stats(magic_number):
                 cagr = 0
         else:
             # Fallback si no hay columna Balance
-            capital_required = max(5000, max_drawdown_abs * 2)
+            capital_required = 100000  # Capital real de la cuenta
             final_capital = capital_required + net_profit
             
             if capital_required > 0 and final_capital > 0:
@@ -1259,7 +1259,7 @@ def get_ea_max_dd_year():
         max_dd_abs = abs(combined_df['drawdown'].min())
         
         # Calcular como porcentaje
-        capital_inicial = max(5000, max_dd_abs * 2)
+        capital_inicial = 100000  # Capital real de la cuenta
         max_dd_percent = (max_dd_abs / capital_inicial * 100) if capital_inicial > 0 else 0
         
         print(f"   ✅ Max DD (porcentaje): {max_dd_percent:.2f}%")
@@ -1335,7 +1335,7 @@ def get_ea_max_dd_year_selected():
         max_dd_abs = abs(df['drawdown'].min())
         
         # Calcular como porcentaje
-        capital_inicial = max(5000, max_dd_abs * 2)
+        capital_inicial = 100000  # Capital real de la cuenta
         max_dd_percent = (max_dd_abs / capital_inicial * 100) if capital_inicial > 0 else 0
         
         conn.close()

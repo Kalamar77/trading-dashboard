@@ -1020,31 +1020,42 @@ def get_detailed_stats(magic_number):
             r2_equity = 0
         
         # ================================================================
-        # CAGR - CORREGIDO (Usando Balance real del CSV)
+        # CAGR - Estandarizado (método SQX)
         # ================================================================
         first_date = df['Close time'].min()
         last_date = df['Close time'].max()
         days_diff = (last_date - first_date).days
         total_months = days_diff / 30.44 if days_diff > 0 else 0
         
-        if days_diff > 0 and 'Balance' in df.columns:
-            initial_balance = df['Balance'].iloc[0]
-            final_balance = df['Balance'].iloc[-1]
+        if days_diff > 0:
+            years = days_diff / 365.25
             
-            if initial_balance > 0 and final_balance > 0:
-                years = days_diff / 365.25
-                cagr = ((final_balance / initial_balance) ** (1 / years) - 1) * 100
+            # Determinar capital inicial y profit
+            if 'Balance' in df.columns and len(df) > 0:
+                # Si hay balance, usarlo
+                initial_balance = df['Balance'].iloc[0]
+                final_balance = df['Balance'].iloc[-1]
+                
+                if initial_balance > 0:
+                    net_profit_real = final_balance - initial_balance
+                    capital = initial_balance
+                    final_capital = final_balance
+                else:
+                    # Fallback a capital estándar
+                    capital = 100000
+                    final_capital = capital + net_profit
             else:
-                cagr = 0
+                # Sin balance, usar capital estándar
+                capital = 100000
+                final_capital = capital + net_profit
+            
+            # Calcular CAGR con fórmula correcta
+            if final_capital > 0 and capital > 0:
+                cagr = ((final_capital / capital) ** (1 / years) - 1) * 100
+            else:
+                cagr = -100.0 if final_capital <= 0 else 0
         else:
-            # Fallback si no hay columna Balance
-            capital_required = 100000  # Capital real de la cuenta
-            final_capital = capital_required + net_profit
-            
-            if capital_required > 0 and final_capital > 0:
-                cagr = ((final_capital / capital_required) ** (365.25 / days_diff) - 1) * 100
-            else:
-                cagr = 0
+            cagr = 0
         
         # ================================================================
         # SHARPE RATIO - CORREGIDO (Sin anualizar)

@@ -401,28 +401,24 @@ def calculate_statistics(source=None, year=None, trade_type=None, symbol=None, t
             sharpe_ratio = (mean_daily / std_daily) if std_daily > 0 else 0
     
     # ================================================================
-    # CAGR - Mantener aproximado (no tenemos balance inicial en BD)
+    # CAGR - Cálculo estandarizado (método SQX)
     # ================================================================
     cagr = 0
     if len(df_sorted_clean) > 0:
         first_date = df_sorted_clean['close_time'].min()
         last_date = df_sorted_clean['close_time'].max()
         days_diff = (last_date - first_date).days
-        years = days_diff / 365.25
         
-        capital_required = 100000  # Capital real de la cuenta
-        final_capital = capital_required + net_profit
-        
-        if years >= 1:
-            if capital_required > 0 and final_capital > 0:
+        if days_diff > 0:
+            years = days_diff / 365.25
+            capital_required = 100000  # Capital fijo como SQX
+            final_capital = capital_required + net_profit
+            
+            # CAGR con fórmula compuesta siempre (sin importar el periodo)
+            if final_capital > 0:
                 cagr = ((final_capital / capital_required) ** (1 / years) - 1) * 100
             else:
-                cagr = 0
-        elif years > 0:
-            if capital_required > 0:
-                cagr = (net_profit / capital_required / years) * 100
-            else:
-                cagr = 0
+                cagr = -100.0  # Pérdida total
     
     # Recovery Days
     recovery_times = []
@@ -746,20 +742,20 @@ def get_stats():
             r2_equity = 0
         
         # ================================================================
-        # CAGR - CORREGIDO (FXBlue usa $100,000 inicial)
+        # CAGR - Estandarizado (método SQX)
         # ================================================================
         first_date = df['close_time'].min()
         last_date = df['close_time'].max()
         days_diff = (last_date - first_date).days
         
         if days_diff > 0:
-            final_balance = initial_balance + net_profit
             years = days_diff / 365.25
+            final_balance = initial_balance + net_profit
             
-            if years > 0 and final_balance > 0:
+            if final_balance > 0:
                 cagr = ((final_balance / initial_balance) ** (1 / years) - 1) * 100
             else:
-                cagr = 0
+                cagr = -100.0
         else:
             cagr = 0
         
@@ -1781,32 +1777,31 @@ def get_portfolio_stats():
             r2_equity = 0
         
         # ================================================================
-        # CAGR - CORREGIDO (Con Balance si existe)
+        # CAGR - Estandarizado (método SQX)
         # ================================================================
         first_date = combined_df['Close time'].min()
         last_date = combined_df['Close time'].max()
         days_diff = (last_date - first_date).days
         
-        if days_diff > 0 and has_balance and initial_balance_total > 0:
-            # Usar Balance real del CSV
-            final_balance = initial_balance_total + net_profit
+        if days_diff > 0:
             years = days_diff / 365.25
             
-            if final_balance > 0:
-                cagr = ((final_balance / initial_balance_total) ** (1 / years) - 1) * 100
-                print(f"  💰 CAGR con Balance real: {cagr:.2f}% (Inicial: ${initial_balance_total}, Final: ${final_balance})")
+            # Priorizar balance real si existe, sino usar 100000
+            if has_balance and initial_balance_total > 0:
+                capital = initial_balance_total
+                final_balance = capital + net_profit
             else:
-                cagr = 0
-        elif days_diff > 0:
-            # Fallback sin Balance
-            capital_requerido = 100000  # Capital real de la cuenta
-            equity_final = capital_requerido + net_profit
+                capital = 100000  # Capital estándar SQX
+                final_balance = capital + net_profit
             
-            if capital_requerido > 0 and equity_final > 0:
-                cagr = ((equity_final / capital_requerido) ** (365.25 / days_diff) - 1) * 100
-                print(f"  ⚠️ CAGR aproximado (sin Balance): {cagr:.2f}%")
+            if final_balance > 0:
+                cagr = ((final_balance / capital) ** (1 / years) - 1) * 100
+                if has_balance:
+                    print(f"  💰 CAGR con Balance real: {cagr:.2f}% (Inicial: ${capital}, Final: ${final_balance})")
+                else:
+                    print(f"  ⚠️ CAGR con capital estándar: {cagr:.2f}%")
             else:
-                cagr = 0
+                cagr = -100.0
         else:
             cagr = 0
         

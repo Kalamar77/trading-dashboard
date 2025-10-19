@@ -186,7 +186,7 @@ async function updateMaxDDYear() {
     
     const params = `year=${year}&source=${source}&symbol=${symbol}&timeframe=${timeframe}&magic_number=${magicNumber}&type=${type}`;
     
-    console.log('📊 Actualizando Max DD Year con filtros:', params);
+    console.log('📊 Actualizando Max DD % Year con filtros:', params);
     
     // Mostrar loading
     maxDDYearElement.textContent = '...';

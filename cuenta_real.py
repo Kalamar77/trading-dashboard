@@ -301,18 +301,20 @@ def get_cuenta_real_stats():
         else:
             r2_equity = 0
         
-        # CAGR
+        # CAGR - Estandarizado (método SQX)
         first_date = df['close_date'].min()
         last_date = df['close_date'].max()
         days_diff = (last_date - first_date).days
 
         if days_diff > 0:
-            capital_req = max(5000, max_drawdown_abs * 2)
+            years = days_diff / 365.25
+            capital_req = 100000  # Capital fijo como SQX (NO basado en drawdown)
             equity_final = capital_req + net_profit
-            if capital_req > 0 and equity_final > 0:
-                cagr = float(round(((equity_final / capital_req) ** (365.25 / days_diff) - 1) * 100, 2))
+            
+            if equity_final > 0:
+                cagr = float(round(((equity_final / capital_req) ** (1 / years) - 1) * 100, 2))
             else:
-                cagr = 0.0
+                cagr = -100.0
         else:
             cagr = 0.0
         
